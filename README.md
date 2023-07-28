@@ -6,7 +6,7 @@
 Мод, адаптирующий игру "Супер Корова" (Nevosoft) к 16:9 экранам<br><br>
 ![screenshot](.github/screenshot.png)
 
-## Установка
+## Установка <a id='install'></a>
 
 1. Установить [**SuperMod**](https://github.com/zziger/supercow-mod#readme)
 2. Скачать последнюю версию мода [**тут**](https://github.com/zziger/supercow-widescreen-fix/archive/refs/heads/master.zip)
