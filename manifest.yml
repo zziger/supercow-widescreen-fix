@@ -1,0 +1,6 @@
+id: widescreen-fix
+title: Widescreen Fix
+author: zziger, Creepobot, Dvuediniy
+version: 0.1.0
+lua-script: main.lua
+sdk-version: 2.2.0
