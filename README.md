@@ -1,6 +1,6 @@
 # SuperCow Widescreen fix
 
-| [**Download / Скачать**](https://github.com/zziger/supercow-widescreen-fix/archive/refs/heads/master.zip) | [**Discord сервер**](https://scc.zziger.me) |
+| [**Download / Скачать**](https://github.com/zziger/supercow-widescreen-fix/archive/refs/heads/master.zip) | [**Discord сервер**](https://discord.supercow.community) |
 |-------------------------------------------------------------------------------------------------------|-----------------------------------------------------|
 
 Мод, адаптирующий игру "Супер Корова" (Nevosoft) к 16:9 экранам<br><br>
