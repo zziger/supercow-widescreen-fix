@@ -1,6 +1,10 @@
 id: widescreen-fix
 title: Widescreen Fix
 author: zziger, Creepobot, Dvuediniy
-version: 0.1.0
+version: 0.1.1
 lua-script: main.lua
 sdk-version: 2.2.0
+description: Этот мод адаптирует интерфейсы игры для широкоформатных (16:9) мониторов.
+socialLinks:
+  discord: https://discord.supercow.community
+  github: https://github.com/zziger/supercow-widescreen-fix
