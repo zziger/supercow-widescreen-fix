@@ -96,6 +96,15 @@ local camWorldWidth = memory.at("D9 05 ? ? ? ? D8 25 ? ? ? ? 51 D9 1C 24 8B 45")
 local maxWorldBorderX = memory.at("C7 05 ? ? ? ? ? ? ? ? C7 05 ? ? ? ? ? ? ? ? C7 45 ? ? ? ? ? EB ? 8B 4D"):add(2)
 local minWorldBorderX = maxWorldBorderX:add(10):readOffset()
 local deathToggle = replacement:add(2):readOffset()
+local updateCamPos = memory.at("55 8B EC 83 EC ? C7 45 ? ? ? ? ? 83 3D"):getFunction("void(*)()")
+local loadGameScene = memory.at("55 8B EC 51 89 4D ? A1")
+
+local loadLevelHook
+loadLevelHook = loadGameScene:hook("void(__cdecl *)(int)",
+    function(a1)
+        loadLevelHook.orig(a1)
+        updateCamPos()
+    end)
 
 local function setCamPos()
     local camWorldW = camWorldWidth:readFloat()
