@@ -71,7 +71,7 @@ getCursorPosHook = getCursorPosAddr:hook("void(__cdecl *)(float*, float*)",
     function(x, y)
         getCursorPosHook.orig(x, y)
         x[0] = (x[0] + 400) / 800 * w - (w / 2)
-    end)
+    end, { jit = true })
 
 local renderAnimBackAddr = memory.at("55 8B EC 83 EC ? D9 45 ? D8 25 ? ? ? ? D9 5D ? D9 45 ? D8 25 ? ? ? ? D9 5D ? D9 45 ? D8 25 ? ? ? ? D9 55 ? D9 E0 D9 5D ? D9 45 ? D8 25 ? ? ? ? D9 55 ? D9 E0 D9 5D ? D9 45")
 local renderAnimBackHook;
