@@ -64,6 +64,10 @@ local function zoomStatic(orig)
     return orig / (realH / 600)
 end
 
+local function lerp(a, b, t)
+    return a + (b - a) * t
+end
+
 --#region General patches
 local getCursorPosAddr = memory.at("55 8B EC 83 EC ? 8D 45 ? 50 8B 0D ? ? ? ? 51 FF 15 ? ? ? ? 8D 55 ? 52 A1 ? ? ? ? 50 FF 15 ? ? ? ? 8D 4D ? 51 FF 15 ? ? ? ? 8B 55 ? 2B 55 ? 89 55 ? 8B 45 ? 2B 45 ? 8B 4D ? 2B C8 89 4D ? DB 45")
 local getCursorPosHook;
@@ -98,12 +102,28 @@ local minWorldBorderX = maxWorldBorderX:add(10):readOffset()
 local deathToggle = replacement:add(2):readOffset()
 local updateCamPos = memory.at("55 8B EC 83 EC ? C7 45 ? ? ? ? ? 83 3D"):getFunction("void(*)()")
 local loadGameScene = memory.at("55 8B EC 51 89 4D ? A1")
+local performCamAnim = memory.at("55 8B EC 83 EC ? D9 05 ? ? ? ? D8 1D ? ? ? ? DF E0 F6 C4 ? 7A ? E9 ? ? ? ? D9 05")
+local camPosX = memory.at("89 15 ? ? ? ? A3 ? ? ? ? D9 05 ? ? ? ? D8 05"):add(2):readOffset()
+local camAnimType = memory.at("A1 ? ? ? ? 89 45 ? 83 7D ? ? 0F 87"):add(1):readOffset()
+local camAnimTime = memory.at("D9 05 ? ? ? ? D8 35 ? ? ? ? D9 5D ? A1"):add(2):readOffset()
+local camAnimDuration = memory.at("D8 35 ? ? ? ? D9 5D ? A1 ? ? ? ? 89 45"):add(2):readOffset()
+local cowPosX = memory.at("B9 ? ? ? ? E8 ? ? ? ? C7 45 ? ? ? ? ? EB ? 8B 4D ? 83 C1 ? 89 4D ? 8B 55 ? 3B 15 ? ? ? ? 0F 8D"):add(1):readOffset():add(0x24)
 
 local loadLevelHook
 loadLevelHook = loadGameScene:hook("void(__cdecl *)(int)",
     function(a1)
         loadLevelHook.orig(a1)
         updateCamPos()
+    end)
+
+local camAnimHook
+camAnimHook = performCamAnim:hook("void(*)()",
+    function()
+        if camAnimType:readInt() == 1 then
+            local time = camAnimTime:readFloat() / camAnimDuration:readFloat()
+            camPosX:writeFloat(lerp(camPosX:readFloat(), -cowPosX:readFloat(), time))
+        end
+        camAnimHook.orig()
     end)
 
 local function setCamPos()
@@ -124,6 +144,7 @@ local postEditorDefaultZoomAddr = memory.at("C7 05 ? ? ? ? ? ? ? ? 8B E5 5D C3 C
 local cheatkeyMinZoomAddr = memory.at("C7 05 ? ? ? ? ? ? ? ? EB ? D9 45"):add(6)
 local cheatkeyMaxZoomAddr = memory.at("C7 05 ? ? ? ? ? ? ? ? EB ? 8B 55 ? 89 15"):add(6)
 
+local levelDoneAnimDuration = memory.at("C7 05 ? ? ? ? ? ? ? ? EB ? C7 05 ? ? ? ? ? ? ? ? EB ? C7 05 ? ? ? ? ? ? ? ? 8B E5"):add(6)
 local defaultZoomInAnimAddr = memory.at("D8 2D ? ? ? ? D9 1D ? ? ? ? E9 ? ? ? ? D9 05 ? ? ? ? D8 4D ? D8 2D"):add(2)
 local maxLevelAnimAddr = memory.at("D9 05 ? ? ? ? D8 4D ? D8 2D ? ? ? ? D9 1D ? ? ? ? E9"):add(2)
 local maxBossAnimAddr = memory.at("D9 05 ? ? ? ? D8 4D ? D8 2D ? ? ? ? D9 1D ? ? ? ? 8B 4D"):add(2)
@@ -135,7 +156,7 @@ local zoomHalf = ffi.new("float[1]", { 0.5 })
 local zoomOneSixth = ffi.new("float[1]", { 0.6 })
 local function applyZoom()
     zoomOne[0] = zoomStatic(1)
-    zoomHalf[0] = zoomStatic(0.5)
+    zoomHalf[0] = zoomStatic(0.3)
     zoomOneSixth[0] = zoomStatic(0.6)
 
     replacement:writeNearCall(tonumber(ffi.cast("uint32_t", setCamPosCallback)))
@@ -155,6 +176,7 @@ local function applyZoom()
     maxBossAnimAddr:writeInt(tonumber(ffi.cast("uintptr_t", zoomOneSixth)))
     defaultLevelAnimAddr:writeInt(tonumber(ffi.cast("uintptr_t", zoomOne)))
     defaultBossAnimAddr:writeInt(tonumber(ffi.cast("uintptr_t", zoomOne)))
+    levelDoneAnimDuration:writeFloat(5500) -- prevents camera from clamping to level right border on level end anim
 end
 --#endregion
 
