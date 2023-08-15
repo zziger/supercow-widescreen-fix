@@ -143,6 +143,9 @@ local editorUIDefaultZoomAddr = memory.at("C7 05 ? ? ? ? ? ? ? ? B8 ? ? ? ? E9")
 local postEditorDefaultZoomAddr = memory.at("C7 05 ? ? ? ? ? ? ? ? 8B E5 5D C3 CC CC 55"):add(6)
 local cheatkeyMinZoomAddr = memory.at("C7 05 ? ? ? ? ? ? ? ? EB ? D9 45"):add(6)
 local cheatkeyMaxZoomAddr = memory.at("C7 05 ? ? ? ? ? ? ? ? EB ? 8B 55 ? 89 15"):add(6)
+local baseSceneZoomIfMin = memory.at("D8 1D ? ? ? ? DF E0 F6 C4 ? 7A ? C7 05 ? ? ? ? ? ? ? ? EB ? D9 45"):add(2)
+local baseSceneZoomIfMax = memory.at("D8 1D ? ? ? ? DF E0 F6 C4 ? 75 ? C7 05 ? ? ? ? ? ? ? ? EB ? 8B 55"):add(2)
+local editorZoomPercentsAddr = memory.at("D8 0D ? ? ? ? 83 EC"):add(2)
 
 local levelDoneAnimDuration = memory.at("C7 05 ? ? ? ? ? ? ? ? EB ? C7 05 ? ? ? ? ? ? ? ? EB ? C7 05 ? ? ? ? ? ? ? ? 8B E5"):add(6)
 local defaultZoomInAnimAddr = memory.at("D8 2D ? ? ? ? D9 1D ? ? ? ? E9 ? ? ? ? D9 05 ? ? ? ? D8 4D ? D8 2D"):add(2)
@@ -154,25 +157,35 @@ local defaultBossAnimAddr = maxBossAnimAddr:add(9)
 local zoomOne = ffi.new("float[1]", { 1 })
 local zoomHalf = ffi.new("float[1]", { 0.5 })
 local zoomOneSixth = ffi.new("float[1]", { 0.6 })
+local zoomMax = ffi.new("float[1]", { 5 })
+local editorZoomPercents = ffi.new("float[1]", { 100 })
+local lastDefaultZoom = 1
 local function applyZoom()
     zoomOne[0] = zoomStatic(1)
-    zoomHalf[0] = zoomStatic(0.3)
+    zoomHalf[0] = zoomStatic(0.5)
     zoomOneSixth[0] = zoomStatic(0.6)
+    zoomMax[0] = zoomStatic(5)
+    editorZoomPercents[0] = 100 / zoomOne[0]
+    local zoomHalfAddr = tonumber(ffi.cast("uintptr_t", zoomHalf))
 
     replacement:writeNearCall(tonumber(ffi.cast("uint32_t", setCamPosCallback)))
     replacement:add(5):writeInt16(0x9066)
 
-    camZoom:writeFloat(zoomStatic(1))
-    defaultZoomAddr:writeFloat(zoomStatic(1))
-    cheatkeyDefaultZoomAddr:writeFloat(zoomStatic(1))
-    editorKeyDefaultZoomAddr:writeFloat(zoomStatic(1))
-    editorUIDefaultZoomAddr:writeFloat(zoomStatic(1))
-    postEditorDefaultZoomAddr:writeFloat(zoomStatic(1))
-    cheatkeyMinZoomAddr:writeFloat(zoomStatic(0.5))
-    cheatkeyMaxZoomAddr:writeFloat(zoomStatic(5))
+    camZoom:writeFloat(camZoom:readFloat() / lastDefaultZoom * zoomOne[0])
+    editorZoomPercentsAddr:writeInt(tonumber(ffi.cast("uintptr_t", editorZoomPercents)))
+    defaultZoomAddr:writeFloat(zoomOne[0])
+    cheatkeyDefaultZoomAddr:writeFloat(zoomOne[0])
+    editorKeyDefaultZoomAddr:writeFloat(zoomOne[0])
+    editorUIDefaultZoomAddr:writeFloat(zoomOne[0])
+    postEditorDefaultZoomAddr:writeFloat(zoomOne[0])
+    cheatkeyMinZoomAddr:writeFloat(zoomHalf[0])
+    cheatkeyMaxZoomAddr:writeFloat(zoomMax[0])
+    baseSceneZoomIfMin:writeInt(zoomHalfAddr)
+    baseSceneZoomIfMax:writeInt(tonumber(ffi.cast("uintptr_t", zoomMax)))
+    lastDefaultZoom = zoomOne[0]
 
     defaultZoomInAnimAddr:writeInt(tonumber(ffi.cast("uintptr_t", zoomOne)))
-    maxLevelAnimAddr:writeInt(tonumber(ffi.cast("uintptr_t", zoomHalf)))
+    maxLevelAnimAddr:writeInt(zoomHalfAddr)
     maxBossAnimAddr:writeInt(tonumber(ffi.cast("uintptr_t", zoomOneSixth)))
     defaultLevelAnimAddr:writeInt(tonumber(ffi.cast("uintptr_t", zoomOne)))
     defaultBossAnimAddr:writeInt(tonumber(ffi.cast("uintptr_t", zoomOne)))
@@ -257,6 +270,9 @@ local gameTaskBgXAddr = memory.at("68 ? ? ? ? E8 ? ? ? ? 83 C4 ? A1 ? ? ? ? 8B 0
 local gameTaskIconXAddr = memory.at("68 ? ? ? ? E8 ? ? ? ? 83 C4 ? 8B 4D ? 51 8B 55"):add(1)
 local gameTaskTextXAddr = memory.at("68 ? ? ? ? E8 ? ? ? ? 83 C4 ? 0F B6 05 ? ? ? ? 85 C0 0F 85"):add(1)
 local gameTaskYAddr = memory.at("C7 45 ? ? ? ? ? 83 3D ? ? ? ? ? 0F 8E"):add(3)
+local gameScoreParticlesXAddr = memory.at("C7 45 ? ? ? ? ? D9 45 ? D8 1D ? ? ? ? DF E0 F6 C4 ? 7A ? DB 05"):add(3)
+local gameScoreParticlesYAddr = memory.at("D8 05 ? ? ? ? 51 D9 1C 24 68 ? ? ? ? E8 ? ? ? ? 83 C4 ? D8 6D"):add(2)
+local gameScoreParticlesYNew = ffi.new("float[1]", { -270 })
 
 local function applyGame()
     local offsetX = 0
@@ -266,6 +282,8 @@ local function applyGame()
         offsetX = offsetValueBuf[0]
         offsetY = offsetValueBuf[1]
     end
+
+    gameScoreParticlesYNew[0] = leftOffset(-270, offsetY)
 
     gameHealthBarPosAddr:add(4 + 5 + 1):writeFloat(bindToLeft(leftOffset(-400, offsetX)))
     gameHealthBarPosAddr:writeFloat(bindToLeft(leftOffset(-144, offsetX)))
@@ -282,6 +300,9 @@ local function applyGame()
 
     gameScoreXAddr:writeFloat(bindToRight(rightOffset(370, offsetX)))
     gameScoreXAddr:add(7):writeFloat(leftOffset(-284, offsetY)) -- Y value
+
+    gameScoreParticlesXAddr:writeFloat(bindToRight(rightOffset(380, offsetX)))
+    gameScoreParticlesYAddr:writeInt(tonumber(ffi.cast("uintptr_t", gameScoreParticlesYNew)))
 
     gameLevelXAddr:writeFloat(bindToRight(rightOffset(350, offsetX)))
     gameLevelXAddr:add(7):writeFloat(rightOffset(281, offsetY)) -- Y value
@@ -330,13 +351,25 @@ local function setLevelBackRenderProjection()
 end
 local setLevelBackRenderProjectionCallback = ffi.cast("void (*)()", setLevelBackRenderProjection)
 
-local function applyCredits()  
+local function applyCredits()
     creditsDogProjectionAddr:writeFloat(w)
     creditsDogMainProjectionAddr:writeChar(0x68);
     creditsDogMainProjectionAddr:add(1):writeFloat(w * 0.03125);
     creditsDogMainProjectionAddr:add(5):writeNop(8)
     hiscoreRenderLevelbackAddr:writeNearCall(tonumber(ffi.cast("uint32_t", setLevelBackRenderProjectionCallback)) --[[@as number]])
     creditsRenderLevelbackAddr:writeNearCall(tonumber(ffi.cast("uint32_t", setLevelBackRenderProjectionCallback)) --[[@as number]])
+end
+--#endregion
+
+--#region Actual Credits
+local happyEndCreditsBg = memory.at("68 ? ? ? ? 6A ? 6A ? 8D 4D ? E8 ? ? ? ? 8B 50 ? 52 8B 00 50 E8 ? ? ? ? 83 C4 ? D9 05"):add(1)
+local happyEndCredits1Bg = memory.at("68 ? ? ? ? 6A ? 6A ? 8D 4D ? E8 ? ? ? ? 8B 48 ? 51 8B 10 52 E8 ? ? ? ? 83 C4 ? D9 45"):add(1)
+local happyEndWhiteCreditsBg = memory.at("68 ? ? ? ? 6A ? 6A ? 8D 8D ? ? ? ? E8 ? ? ? ? 8B 50"):add(1)
+
+local function applyActualCredits()
+    happyEndCreditsBg:writeFloat(w)
+    happyEndCredits1Bg:writeFloat(w)
+    happyEndWhiteCreditsBg:writeFloat(w)
 end
 --#endregion
 
@@ -360,6 +393,24 @@ local function applyLevelBacks()
     levelbacksWidth4:writeInt(tonumber(ffi.cast("uintptr_t", widthBuf)))
     levelbacksWidth5:writeFloat(w)
 end
+--#endregion
+
+--#region Editor
+local editorUiX = memory.at("C7 45 ? ? ? ? ? C7 45 ? ? ? ? ? 8B 0D ? ? ? ? 83 C1"):add(3)
+
+local function applyEditor()
+    local offsetX = 0
+    local offsetY = 0
+
+    if offsetEnabledBuf[0] then
+        offsetX = offsetValueBuf[0]
+        offsetY = offsetValueBuf[1]
+    end
+
+    editorUiX:writeFloat(bindToRight(rightOffset(290, offsetX)))
+    editorUiX:add(7):writeFloat(leftOffset(-240, offsetY))
+end
+--#endregion
 
 --#region Misc
 local resetProjectionAddr = memory.at("68 ? ? ? ? E8 ? ? ? ? 83 C4 ? 5D C3 CC 55"):add(1)
@@ -367,8 +418,12 @@ local introBgWidthAddr = memory.at("68 ? ? ? ? 6A ? 6A ? 8D 8D ? ? ? ? E8 ? ? ? 
 local loadScreenSizeAddr = memory.at("68 ? ? ? ? 68 ? ? ? ? 68 ? ? ? ? 68 ? ? ? ? 8D 4D ? E8 ? ? ? ? 50 E8 ? ? ? ? 83 C4 ? DB 05"):add(5 + 1)
 local splashSizeAddr = memory.at("68 ? ? ? ? 8B ? FC ? 68 00 00 16 3F 68 00 00 48 3F 6A 00 6A 00 8D 4D ? E8 ? ? ? ? 50 68 00 00 96 C3"):add(5 + 3 + 1 + 5 + 5 + 2 + 2 + 3 + 5 + 1):add(5 + 1)
 local defaultMenuXAddr = memory.at("68 ? ? ? ? E8 ? ? ? ? 83 C4 ? 5D C3 CC CC CC 55 8B EC 83 EC"):add(1)
+local cursorMinXJnpAddr = memory.at("7B ? D9 45 ? D8 1D ? ? ? ? DF E0 F6 C4 ? 74")
+local cursorMaxXJnpAddr = memory.at("74 ? D9 45 ? D8 1D ? ? ? ? DF E0 F6 C4 ? 74")
 
 local function applyMisc()
+    cursorMinXJnpAddr:writeNop(2)
+    cursorMaxXJnpAddr:writeNop(2)
     resetProjectionAddr:writeFloat(w)
     introBgWidthAddr:writeFloat(w)
     loadScreenSizeAddr:writeFloat(bindToRightStatic(400))
@@ -386,9 +441,11 @@ local function apply()
     applyGame()
     applyDialogue()
     applyCredits()
+    applyActualCredits()
     applyMisc()
     applyLevelBacks()
     applyZoom()
+    applyEditor()
 end
 
 apply()
