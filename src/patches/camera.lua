@@ -72,7 +72,6 @@ events.on("_unload", function()
 end)
 
 return function()
-    print("yay")
     zoomOne[0] = zoomStatic(1)
     zoomHalf[0] = zoomStatic(0.5)
     zoomOneSixth[0] = zoomStatic(0.6)
