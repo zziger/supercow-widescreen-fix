@@ -79,7 +79,7 @@ getCursorPosHook = getCursorPosAddr:hook("void(__cdecl *)(float*, float*)",
 
 local renderAnimBackAddr = memory.at("55 8B EC 83 EC ? D9 45 ? D8 25 ? ? ? ? D9 5D ? D9 45 ? D8 25 ? ? ? ? D9 5D ? D9 45 ? D8 25 ? ? ? ? D9 55 ? D9 E0 D9 5D ? D9 45 ? D8 25 ? ? ? ? D9 55 ? D9 E0 D9 5D ? D9 45")
 local renderAnimBackHook;
-renderAnimBackHook = renderAnimBackAddr:hook("void __cdecl (*)(float a1, float a2, float a3, float a4, float a5, float a6, float a7, float a8, int a9)", 
+renderAnimBackHook = renderAnimBackAddr:hook("void (__cdecl *)(float a1, float a2, float a3, float a4, float a5, float a6, float a7, float a8, int a9)", 
     function(a1, a2, a3, a4, a5, a6, a7, a8, a9)
         renderAnimBackHook.orig(perfectW / -2 + 400, a2, perfectW, a4, a5, a6, 0.88, a8, a9)
     end)
@@ -232,6 +232,42 @@ local mapStartButtonXAddr = memory.at("C7 45 ? ? ? ? ? 68 ? ? ? ? 68 ? ? ? ? 8D 
 local mapBackButtonXAddr = memory.at("68 ? ? ? ? 8D 4D ? E8 ? ? ? ? 68 ? ? ? ? 68 ? ? ? ? 8D 45"):add(1)
 local mapClipPlaneAddr = memory.at("B9 ? ? ? ? E8 ? ? ? ? 8B C8 E8 ? ? ? ? 8B C8 E8 ? ? ? ? 8B C8"):add(1):readOffset()
 local mapDefaultClipPlaneAddr = memory.at("A3 ? ? ? ? 68 ? ? ? ? FF 15 ? ? ? ? 68 ? ? ? ? 68 ? ? ? ? 68"):add(5 + 5 + 6 + 5 + 1)
+local mapPos = memory.at("B9 ? ? ? ? E8 ? ? ? ? D8 0D ? ? ? ? D8 6D ? D8 9D"):add(1):readOffset()
+
+local setMapBoundaryLeft = memory.at("E8 ? ? ? ? 8B 0D ? ? ? ? 51 8B 15 ? ? ? ? 52")
+local setMapBoundaryRight = memory.at("E8 ? ? ? ? D9 45 ? E8 ? ? ? ? 89 85 ? ? ? ? DB 85 ? ? ? ? D8 5D")
+
+local function mapApplyLeftBoundary(this_, x, y)
+    local mapWidth = math.abs(mapPos:readFloat() - mapPos:add(8):readFloat())
+    this_[0] = bindToLeftStatic(-384) + mapWidth / 2
+    this_[1] = y
+end
+local mapApplyLeftBoundaryCallback = ffi.cast("void (__thiscall *)(float*, float, float)", mapApplyLeftBoundary)
+
+local function mapApplyRightBoundary(this_, x, y)
+    local mapWidth = math.abs(mapPos:readFloat() - mapPos:add(8):readFloat())
+    this_[0] = bindToRightStatic(112) - mapWidth / 2
+    this_[1] = y
+end
+local mapApplyRightBoundaryCallback = ffi.cast("void (__thiscall *)(float*, float, float)", mapApplyRightBoundary)
+
+-- This image is a representation of data in the Z axis of rendered sprite position
+-- ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⣀⣠⣤⣤⣀⠀⠀
+-- ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣠⣤⣶⣾⣿⣿⣿⣿⣿⣿⣿⣿⣧⠀
+-- ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣤⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠀
+-- ⠀⠀⠀⠀⠀⠀⠀⢀⣴⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠀
+-- ⠀⠀⠀⠀⢀⣀⢾⣿⣿⣿⣿⣿⣿⣿⣿⣿⠿⠛⢋⣭⡍⣿⣿⣿⣿⣿⣿⠀
+-- ⠀⢀⣴⣶⣶⣝⢷⡝⢿⣿⣿⣿⠿⠛⠉⠀⠀⣰⣿⣿⢣⣿⣿⣿⣿⣿⣿⡇
+-- ⢀⣾⣿⣿⣿⣿⣧⠻⡌⠿⠋⠁⠀⠀⠀⠀⢰⣿⣿⡏⣸⣿⣿⣿⣿⣿⣿⣿
+-- ⣼⣿⣿⣿⣿⣿⣿⡇⠁⠀⠀⠀⠀⠀⠀⠀⠈⠻⢿⠇⢻⣿⣿⣿⣿⣿⣿⡟
+-- ⠙⢹⣿⣿⣿⠿⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⢿⣿⣿⡿⠟⠁
+-- ⠀⠀⠉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+local convertVector2Addr = memory.at("E8 ? ? ? ? 50 8D 4D ? E8 ? ? ? ? 50 E8")
+local function convertVector2(vec)
+    vec[2] = 0
+    return vec
+end
+local convertVector2Cb = ffi.cast("float* (__thiscall *)(float*)", convertVector2);
 
 local function applyMap()
     mapProjectionAddr:writeFloat(perfectW)
@@ -245,6 +281,9 @@ local function applyMap()
     mapClipPlaneAddr:add(8):writeFloat(bindToRightStatic(112))
     mapDefaultClipPlaneAddr:writeFloat(bindToRightStatic(112))
     mapDefaultClipPlaneAddr:add(4 + 5 + 1):writeFloat(bindToLeftStatic(-384))
+    convertVector2Addr:writeNearCall(tonumber(ffi.cast("uintptr_t", convertVector2Cb)))
+    setMapBoundaryLeft:writeNearCall(tonumber(ffi.cast("uint32_t", mapApplyRightBoundaryCallback)) --[[@as number]])
+    setMapBoundaryRight:writeNearCall(tonumber(ffi.cast("uint32_t", mapApplyLeftBoundaryCallback)) --[[@as number]])
 end
 --#endregion
 
@@ -464,6 +503,9 @@ events.on("_unload", function()
     setCowRenderProjectionCallback:free()
     setLevelBackRenderProjectionCallback:free()
     setCamPosCallback:free()
+    mapApplyLeftBoundaryCallback:free()
+    mapApplyRightBoundaryCallback:free()
+    convertVector2Cb:free()
 end)
 
 function renderUi()
