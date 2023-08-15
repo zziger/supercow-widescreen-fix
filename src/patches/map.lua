@@ -59,6 +59,8 @@ events.on("_unload", function ()
     mapApplyLeftBoundaryCallback:free()
     mapApplyRightBoundaryCallback:free()
     convertVector2Cb:free()
+    mapClipPlaneAddr:writeFloat(-384)
+    mapClipPlaneAddr:add(8):writeFloat(112)
 end)
 
 return function()

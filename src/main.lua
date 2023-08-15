@@ -6,6 +6,10 @@ local events = require("events")
 local config = require("config")
 local imgui = require("imgui")
 
+events.on("_unload", function()
+    memory.restoreBackups(backup)
+end)
+
 local applyGeneral = require("src.patches.general")
 
 local applyCamera = require("src.patches.camera")
@@ -107,10 +111,6 @@ events.on("resolutionChange", function(event)
     h = 600
     w = 600 * ratio
     apply()
-end)
-
-events.on("_unload", function()
-    memory.restoreBackups(backup)
 end)
 
 function renderUi()
