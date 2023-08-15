@@ -36,6 +36,8 @@ local h = 600
 local w = 600 * ratio
 local perfectW = 600 * perfectRatio
 
+local inPerfectProjection = false
+
 local function bindToRight(orig)
     return w / 2 - 400 + orig
 end
@@ -74,7 +76,11 @@ local getCursorPosHook;
 getCursorPosHook = getCursorPosAddr:hook("void(__cdecl *)(float*, float*)",
     function(x, y)
         getCursorPosHook.orig(x, y)
-        x[0] = (x[0] + 400) / 800 * w - (w / 2)
+        if inPerfectProjection then
+            x[0] = (x[0] + 400) / 800 * perfectW - (perfectW / 2)
+        else
+            x[0] = (x[0] + 400) / 800 * w - (w / 2)
+        end
     end, { jit = true })
 
 local renderAnimBackAddr = memory.at("55 8B EC 83 EC ? D9 45 ? D8 25 ? ? ? ? D9 5D ? D9 45 ? D8 25 ? ? ? ? D9 5D ? D9 45 ? D8 25 ? ? ? ? D9 55 ? D9 E0 D9 5D ? D9 45 ? D8 25 ? ? ? ? D9 55 ? D9 E0 D9 5D ? D9 45")
@@ -269,6 +275,14 @@ local function convertVector2(vec)
 end
 local convertVector2Cb = ffi.cast("float* (__thiscall *)(float*)", convertVector2);
 
+local mapRenderAddr = memory.at("55 8B EC 51 89 4D ? 6A ? E8 ? ? ? ? 83 C4 ? 6A ? E8 ? ? ? ? 83 C4 ? 6A ? E8 ? ? ? ? 83 C4 ? 6A ? 6A")
+local mapRenderHook
+mapRenderHook = mapRenderAddr:hook("void(__thiscall *)(void*)", function(this)
+    inPerfectProjection = true
+    mapRenderHook.orig(this)
+    inPerfectProjection = false
+end)
+
 local function applyMap()
     mapProjectionAddr:writeFloat(perfectW)
     mapRenderBackAddr:writeFloat(perfectW)
@@ -290,6 +304,14 @@ end
 --#region Trophies
 local trophiesRenderBackAddr = memory.at("50 68 ? ? ? ? 68 ? ? ? ? 68 ? ? ? ? 68 ? ? ? ? 8D 4D ? E8 ? ? ? ? 50 E8 ? ? ? ? 83 C4 ? 6A ? E8 ? ? ? ? 83 C4 ? D9 05"):add(1 + 5 + 1)
 local trophiesProjectionAddr = memory.at("83 C4 ? 68 ? ? ? ? 68 ? ? ? ? 68 ? ? ? ? 68 ? ? ? ? E8 ? ? ? ? 83 C4 ? B9"):add(3 + 5 + 5 + 5 + 1)
+
+local trophiesRenderAddr = memory.at("55 8B EC 51 89 4D ? D9 05 ? ? ? ? D8 05")
+local trophiesRenderHook
+trophiesRenderHook = trophiesRenderAddr:hook("void(__thiscall *)(void*)", function(this)
+    inPerfectProjection = true
+    trophiesRenderHook.orig(this)
+    inPerfectProjection = false
+end)
 
 local function applyTrophies()
     trophiesRenderBackAddr:writeFloat(perfectW / 2)
