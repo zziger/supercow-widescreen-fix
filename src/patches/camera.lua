@@ -1,11 +1,10 @@
 local ffi = require("ffi")
 local events = require("events")
 
-local replacement = memory.at("D9 1D ? ? ? ? C6 05 ? ? ? ? ? C6 05"):add(6)
 local camWorldWidth = memory.at("D9 05 ? ? ? ? D8 25 ? ? ? ? 51 D9 1C 24 8B 45"):add(2):readOffset()
-local maxWorldBorderX = memory.at("C7 05 ? ? ? ? ? ? ? ? C7 05 ? ? ? ? ? ? ? ? C7 45 ? ? ? ? ? EB ? 8B 4D"):add(2)
-local minWorldBorderX = maxWorldBorderX:add(10):readOffset()
-local deathToggle = replacement:add(2):readOffset()
+local worldBorderAddr = memory.at("C7 05 ? ? ? ? ? ? ? ? C7 05 ? ? ? ? ? ? ? ? C7 45 ? ? ? ? ? EB ? 8B 4D"):add(2)
+local maxWorldBorderX = worldBorderAddr:add(4 + 4 + 2):readOffset()
+local minWorldBorderX = worldBorderAddr:readOffset()
 local updateCamPos = memory.at("55 8B EC 83 EC ? C7 45 ? ? ? ? ? 83 3D"):getFunction("void(*)()")
 local loadGameScene = memory.at("55 8B EC 51 89 4D ? A1")
 local performCamAnim = memory.at("55 8B EC 83 EC ? D9 05 ? ? ? ? D8 1D ? ? ? ? DF E0 F6 C4 ? 7A ? E9 ? ? ? ? D9 05")
@@ -14,6 +13,7 @@ local camAnimType = memory.at("A1 ? ? ? ? 89 45 ? 83 7D ? ? 0F 87"):add(1):readO
 local camAnimTime = memory.at("D9 05 ? ? ? ? D8 35 ? ? ? ? D9 5D ? A1"):add(2):readOffset()
 local camAnimDuration = memory.at("D8 35 ? ? ? ? D9 5D ? A1 ? ? ? ? 89 45"):add(2):readOffset()
 local cowPosX = memory.at("B9 ? ? ? ? E8 ? ? ? ? C7 45 ? ? ? ? ? EB ? 8B 4D ? 83 C1 ? 89 4D ? 8B 55 ? 3B 15 ? ? ? ? 0F 8D"):add(1):readOffset():add(0x24)
+local camUpdateAddr = memory.at("55 8B EC 83 EC ? C7 45 ? ? ? ? ? 83 3D")
 
 local loadLevelHook
 loadLevelHook = loadGameScene:hook("void(__cdecl *)(int)",
@@ -32,15 +32,20 @@ camAnimHook = performCamAnim:hook("void(*)()",
         camAnimHook.orig()
     end)
 
-local function setCamPos()
-    local camWorldW = camWorldWidth:readFloat()
-    local maxXOffset = maxWorldBorderX:readOffset()
-    local maxX, minX = maxXOffset:readFloat(), minWorldBorderX:readFloat()
-    maxXOffset:writeFloat(maxX + camWorldW * 0.5)
-    minWorldBorderX:writeFloat(minX - camWorldW * 0.5)
-    deathToggle:writeByte(0)
-end
-local setCamPosCallback = ffi.cast("void (*)()", setCamPos)
+local camUpdateHook
+camUpdateHook = camUpdateAddr:hook("void(*)()", function()
+    camUpdateHook.orig()
+    local x = -camPosX:readFloat()
+    local hw = camWorldWidth:readFloat() * 0.5
+
+    local min = minWorldBorderX:readFloat() + hw
+    local max = maxWorldBorderX:readFloat() - hw
+    if x < min then
+        camPosX:writeFloat(-min)
+    elseif x > max then
+        camPosX:writeFloat(-max)
+    end
+end)
 
 local defaultZoomAddr = memory.at("C7 05 ? ? ? ? ? ? ? ? C6 05 ? ? ? ? ? C7 05 ? ? ? ? ? ? ? ? E8"):add(6)
 local cheatkeyDefaultZoomAddr = memory.at("C7 05 ? ? ? ? ? ? ? ? E9 ? ? ? ? 83 7D ? ? 75 ? 0F B6 0D"):add(6)
@@ -67,10 +72,6 @@ local zoomMax = ffi.new("float[1]", { 5 })
 local editorZoomPercents = ffi.new("float[1]", { 100 })
 local lastDefaultZoom = 1
 
-events.on("_unload", function()
-    setCamPosCallback:free()
-end)
-
 return function()
     zoomOne[0] = zoomStatic(1)
     zoomHalf[0] = zoomStatic(0.5)
@@ -78,9 +79,6 @@ return function()
     zoomMax[0] = zoomStatic(5)
     editorZoomPercents[0] = 100 / zoomOne[0]
     local zoomHalfAddr = tonumber(ffi.cast("uintptr_t", zoomHalf))
-
-    replacement:writeNearCall(tonumber(ffi.cast("uint32_t", setCamPosCallback)))
-    replacement:add(5):writeInt16(0x9066)
 
     camZoom:writeFloat(camZoom:readFloat() / lastDefaultZoom * zoomOne[0])
     editorZoomPercentsAddr:writeInt(tonumber(ffi.cast("uintptr_t", editorZoomPercents)))
