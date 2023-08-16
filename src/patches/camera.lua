@@ -53,6 +53,8 @@ local editorZoomPercentsAddr = memory.at("D8 0D ? ? ? ? 83 EC"):add(2)
 local editorZoomOrigGovnofix = memory.at("8B 15 ? ? ? ? 89 15 ? ? ? ? A0 ? ? ? ? A2 ? ? ? ? 8B 0D")
 local editorOldZoom = memory.at("89 15 ? ? ? ? A0 ? ? ? ? A2 ? ? ? ? 8B 0D"):add(2):readOffset()
 
+local kostilEbaniy = true
+
 --#region Ззёгра, если ты это читаешь, всё это (кроме булева для костыля ебаного)
 -- это фикс зума редактора между игровыми сессиями, про который я тебе рассказывал в дискорде.
 -- По возможности, занеси его в спермод
@@ -75,7 +77,6 @@ end)
 --#endregion
 
 local leaveEditorFullscreen = memory.at("55 8B EC C7 05 ? ? ? ? ? ? ? ? C7 05 ? ? ? ? ? ? ? ? 68 ? ? ? ? 6A") -- yeah, that's another one, but slightly different
-local kostilEbaniy = true
 
 local editorZoomKostilEbaniy
 editorZoomKostilEbaniy = leaveEditorFullscreen:hook("long(*)()", function()
