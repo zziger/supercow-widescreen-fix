@@ -1,7 +1,7 @@
 id: widescreen-fix
 title: Widescreen Fix
 author: zziger, Creepobot, Dvuediniy
-version: 0.3.0
+version: 0.3.1
 lua-script: src/main.lua
 sdk-version: 2.2.0
 description: Этот мод адаптирует интерфейсы игры для широкоформатных (16:9) мониторов.
