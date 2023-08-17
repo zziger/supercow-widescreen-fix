@@ -12,7 +12,7 @@ local camAnimType = memory.at("A1 ? ? ? ? 89 45 ? 83 7D ? ? 0F 87"):add(1):readO
 local camAnimTime = memory.at("D9 05 ? ? ? ? D8 35 ? ? ? ? D9 5D ? A1"):add(2):readOffset()
 local camAnimDuration = memory.at("D8 35 ? ? ? ? D9 5D ? A1 ? ? ? ? 89 45"):add(2):readOffset()
 local cowPosX = memory.at("B9 ? ? ? ? E8 ? ? ? ? C7 45 ? ? ? ? ? EB ? 8B 4D ? 83 C1 ? 89 4D ? 8B 55 ? 3B 15 ? ? ? ? 0F 8D"):add(1):readOffset():add(0x24)
-local camUpdateAddr = memory.at("55 8B EC 83 EC ? C7 45 ? ? ? ? ? 83 3D")
+camUpdateAddr = memory.at("55 8B EC 83 EC ? C7 45 ? ? ? ? ? 83 3D")
 
 local loadLevelHook
 loadLevelHook = loadGameScene:hook("void(__cdecl *)(int)", function(a1)
@@ -24,13 +24,13 @@ local camAnimHook
 camAnimHook = performCamAnim:hook("void(*)()", function()
     if camAnimType:readInt() == 1 then
         local time = camAnimTime:readFloat() / camAnimDuration:readFloat()
-        camPosX:writeFloat(lerp(camPosX:readFloat(), -cowPosX:readFloat(), time))
+        camPosX:writeFloat(math.lerp(camPosX:readFloat(), -cowPosX:readFloat(), time))
     end
     camAnimHook.orig()
 end)
 
-local camUpdateHook
-camUpdateHook = camUpdateAddr:hook("void(*)()", function()
+local camUpdateHook = nil
+local camUpdateHookFunc = function()
     camUpdateHook.orig()
     local x = -camPosX:readFloat()
     local hw = camWorldWidth:readFloat() * 0.5
@@ -38,7 +38,7 @@ camUpdateHook = camUpdateAddr:hook("void(*)()", function()
     local min = minWorldBorderX:readFloat() + hw
     local max = maxWorldBorderX:readFloat() - hw
     camPosX:writeFloat(-math.clamp(x, min, max))
-end)
+end
 
 local defaultZoomAddr = memory.at("C7 05 ? ? ? ? ? ? ? ? C6 05 ? ? ? ? ? C7 05 ? ? ? ? ? ? ? ? E8"):add(6)
 local cheatkeyDefaultZoomAddr = memory.at("C7 05 ? ? ? ? ? ? ? ? E9 ? ? ? ? 83 7D ? ? 75 ? 0F B6 0D"):add(6)
@@ -100,10 +100,22 @@ local lastDefaultZoom = 1
 local lastEditorDefaultZoom = 1
 
 return function()
-    zoomOne[0] = zoomStatic(1)
-    zoomHalf[0] = zoomStatic(0.5)
-    zoomOneSixth[0] = zoomStatic(0.6)
-    zoomMax[0] = zoomStatic(5)
+    local zoom = zoomValueBuf[0]
+
+    if cameraBoundsEnabledBuf[0] then
+        if camUpdateHook and not camUpdateHook.destroyed then goto nahoy end
+        camUpdateHook = camUpdateAddr:hook("void(*)()", camUpdateHookFunc)
+        ::nahoy::
+    else
+        if camUpdateHook and camUpdateHook.destroyed then goto nahy end
+        camUpdateHook.destroy()
+        ::nahy::
+    end
+
+    zoomOne[0] = zoomStatic(zoom)
+    zoomHalf[0] = zoomStatic(zoom * 0.5)
+    zoomOneSixth[0] = zoomStatic(zoom * 0.6)
+    zoomMax[0] = zoomStatic(zoom * 5)
     editorZoomPercents[0] = 100 / zoomOne[0]
     local zoomHalfAddr = tonumber(ffi.cast("uintptr_t", zoomHalf))
     local zoomOneAddr = tonumber(ffi.cast("uintptr_t", zoomOne))

@@ -19,9 +19,9 @@
 
 ## Авторы
 
-- [zziger](https://github.com/zziger) - Патчи интерфейсов
-- [Creepobot](https://github.com/creepobot) - Патчи внутриигрового интерфейса и камеры
-- Dvuediniy - графика и ассеты
+- [zziger](https://github.com/zziger) - Основная разработка
+- [Creepobot](https://github.com/creepobot) - Помощь в разработке
+- [Dvuediniy](https://discordapp.com/users/784466681749307462) - Графика и ассеты
 
 ## Лицензия
 
