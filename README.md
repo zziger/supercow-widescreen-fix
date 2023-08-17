@@ -21,7 +21,7 @@
 
 - [zziger](https://github.com/zziger) - Основная разработка
 - [Creepobot](https://github.com/creepobot) - Помощь в разработке
-- [Dvuediniy](https://discordapp.com/users/784466681749307462) - Графика и ассеты
+- [Dvuediniy](https://www.youtube.com/@dvuediniy) - Графика и ассеты
 
 ## Лицензия
 
